@@ -102,6 +102,14 @@ def get_or_create_folder(service, folder_name, parent_id=None):
     return folder['id']
 
 # COMANDOS
+# Funciones principales
+async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("⚠️ Este tipo de mensaje no está permitido en este paso.")
+
+# ✅ Aquí colocas la función de manejo de errores
+async def manejar_errores(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logging.error(f"❌ Error inesperado: {context.error}")
+
 async def subir_archivos_drive_diariamente(context: ContextTypes.DEFAULT_TYPE):
     try:
         print("⏳ Ejecutará subida a horas 10:00 pm.")
@@ -340,7 +348,8 @@ async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if all(k in datos for k in ['foto_antes', 'foto_despues', 'foto_etiqueta']):
         datos['latitud'] = update.message.location.latitude
         datos['longitud'] = update.message.location.longitude
-        await guardar_en_excel(update, context, datos)
+        loop = asyncio.get_running_lopp()
+        await loop.run_in_executor(None, guardar_en_excel, update, context,datos)
         await update.message.reply_text(
             "✅ ¡Registro completado con éxito! 🎯\n\n"
             "📊 Se ha guardado la informacion y fotos compartidas correctamente.\n\n"
@@ -453,6 +462,7 @@ async def main():
     app.add_handler(CallbackQueryHandler(manejo_navegacion, pattern=r"^(repetir_paso_|continuar_paso_)"))
     app.add_handler(MessageHandler(~filters.TEXT & ~filters.PHOTO & ~filters.LOCATION, manejar_no_permitido))
     app.add_handler(CallbackQueryHandler(callback_handler))
+    app.add_error_handler(manejar_errores)
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.run_polling()
 
