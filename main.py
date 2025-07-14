@@ -466,7 +466,7 @@ async def main():
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.run_polling()
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     import sys
     import asyncio
     import nest_asyncio
