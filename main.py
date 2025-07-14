@@ -14,6 +14,7 @@ from telegram.ext import (
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.styles import PatternFill
+from PIL import Image as PILImage
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2 import service_account
@@ -74,31 +75,18 @@ def guardar_en_excel(update, context, datos):
     archivo_excel = obtener_nombre_archivo_excel(group_id)
 
     if not os.path.exists(archivo_excel):
-        inicializar_excel(archivo_excel)
-
-    wb = load_workbook(archivo_excel)
+    wb = Workbook()
     ws = wb.active
-    fila = ws.max_row + 1
-
-    ws.cell(row=fila, column=1, value=fecha_actual)
-    ws.cell(row=fila, column=2, value=datos.get("calle", ""))
-
-    fotos = [datos.get("foto_antes"), datos.get("foto_despues"), datos.get("foto_etiqueta")]
-    for idx, foto in enumerate(fotos, start=3):
-        if foto:
-            with open(foto, 'rb') as f:
-                img = PILImage.open(f)
-                output = BytesIO()
-                img.save(output, format='PNG')
-                output.seek(0)
-                imagen_excel = ExcelImage(output)
-                imagen_excel.width = 140
-                imagen_excel.height = 120
-                ws.add_image(imagen_excel, f"{chr(64 + idx)}{fila}")
-
-    ws.cell(row=fila, column=6, value=datos.get("latitud", ""))
-    ws.cell(row=fila, column=7, value=datos.get("longitud", ""))
+    ws.append(["1)", datetime.now().strftime("%Y-%m-%d")])
+    ws.append([
+        "FECHA", "CALLE Y CUADRA", "FOTO ANTES", "FOTO DESPUÉS", "FOTO ETIQUETA",
+        "LATITUD DEL PUNTO FOTOGRAFIADO", "LONGITUD DEL PUNTO FOTOGRAFIADO"
+    ])
+    # Fondo gris a columnas E y F
+    for col in ['F', 'G']:
+        ws[f"{col}2"].fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
     wb.save(archivo_excel)
+    
 def get_or_create_folder(service, folder_name, parent_id=None):
     query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     if parent_id:
