@@ -414,6 +414,7 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 async def main():
     crear_directorio_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+    await app.bot.delete_webhook(drop_pending_updates=True)  # Esto es clave
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ayuda", ayuda))
     app.add_handler(CommandHandler("exportar", exportar))
@@ -424,7 +425,6 @@ async def main():
     app.add_handler(CallbackQueryHandler(manejo_navegacion, pattern=r"^(repetir_paso_|continuar_paso_)"))
     app.add_handler(MessageHandler(~filters.TEXT & ~filters.PHOTO & ~filters.LOCATION, manejar_no_permitido))
     app.add_handler(CallbackQueryHandler(callback_handler))
-
     await app.run_polling()
 
 if __name__ == "__main__":
