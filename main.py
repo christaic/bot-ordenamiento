@@ -465,6 +465,7 @@ async def main():
     app.add_handler(CallbackQueryHandler(manejo_navegacion, pattern=r"^(repetir_paso_|continuar_paso_)"))
     app.add_handler(MessageHandler(~filters.TEXT & ~filters.PHOTO & ~filters.LOCATION, manejar_no_permitido))
     app.add_handler(CallbackQueryHandler(callback_handler))
+    await app.bot.delete_webhook(drop_pending_updates=True)
     await app.run_polling()
 
 if __name__ == "__main__":
