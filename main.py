@@ -466,7 +466,16 @@ async def main():
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.run_polling()
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+if _name_ == "_main_":
+    import sys
+    import asyncio
+    import nest_asyncio
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
     nest_asyncio.apply(loop)
     loop.run_until_complete(main())
