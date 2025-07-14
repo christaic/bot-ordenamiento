@@ -1,7 +1,6 @@
-python-telegram-bot>=20,<21
+python-telegram-bot[job-queue]>=20,<21
 google-api-python-client
 google-auth
 google-auth-oauthlib
 openpyxl
 nest_asyncio
-python-telegram-bot[job-queue]==20.6
