@@ -4,3 +4,4 @@ google-auth
 google-auth-oauthlib
 openpyxl
 nest_asyncio
+python-telegram-bot[job-queue]==20.6
