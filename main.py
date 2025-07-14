@@ -1,6 +1,7 @@
 # main.py
 import os
 import re
+import json
 import logging
 import asyncio
 from datetime import datetime, timedelta, time, timezone 
@@ -28,12 +29,17 @@ registro_datos = {}
 nest_asyncio.apply()
 logging.basicConfig(level=logging.INFO)
 
-# Autenticación OAuth con Google Drive
-SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = 'credentials.json'
+# Obtener el contenido del JSON desde la variable de entorno
+cred_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+if not cred_json:
+    raise ValueError("La variable de entorno GOOGLE_CREDENTIALS_JSON no está definida.")
 
-creds = service_account.Credentials.from_service_account_file(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+# Guardarlo temporalmente como credentials.json
+with open("credentials.json", "w") as f:
+    f.write(cred_json)
 
+# Ahora puedes usarlo normalmente
+creds = service_account.Credentials.from_service_account_file("credentials.json")
 drive_service = build('drive', 'v3', credentials=creds)
 
 def crear_directorio_excel():
