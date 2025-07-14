@@ -468,15 +468,8 @@ async def main():
     await app.run_polling()
 
 if __name__ == "__main__":
-    import sys
     import asyncio
     import nest_asyncio
 
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    nest_asyncio.apply(loop)
-    loop.run_until_complete(main())
+    nest_asyncio.apply()
+    asyncio.run(main())
