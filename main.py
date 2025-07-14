@@ -84,8 +84,7 @@ def guardar_en_excel(update, context, datos):
         ])
     # Fondo gris a columnas E y F
         for col in ['F', 'G']:
-            ws[f"{col}2"].fill =
-    PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+            ws[f"{col}2"].fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
         wb.save(archivo_excel)
     
 def get_or_create_folder(service, folder_name, parent_id=None):
