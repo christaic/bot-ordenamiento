@@ -47,9 +47,10 @@ def crear_directorio_excel():
     if not os.path.exists("reportes"):
         os.makedirs("reportes")
 
-def obtener_nombre_archivo_excel(group_id):
+def obtener_nombre_archivo_excel(nombre_grupo):
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
-    return f"reportes/grupo_{group_id}_{fecha_actual}.xlsx"
+    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
+    return f"reportes/{nombre_limpio}_{fecha_actual}.xlsx"
 
 def inicializar_excel(nombre_archivo):
     wb = Workbook()
@@ -70,9 +71,10 @@ def guardar_en_excel(update, context, datos):
     from io import BytesIO
     from PIL import Image as PILImage
 
-    group_id = update.effective_chat.id
+    nombre_grupo = update.effective_chat.title or f"GRUPO_{update.effective_chat.id}"
+    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    archivo_excel = obtener_nombre_archivo_excel(group_id)
+    archivo_excel = obtener_nombre_archivo_excel(nombre_limpio)
 
     if not os.path.exists(archivo_excel):
         wb = Workbook()
@@ -80,9 +82,8 @@ def guardar_en_excel(update, context, datos):
         ws.append(["1)", datetime.now().strftime("%Y-%m-%d")])
         ws.append([
             "FECHA", "CALLE Y CUADRA", "FOTO ANTES", "FOTO DESPUÉS", "FOTO ETIQUETA",
-        "LATITUD DEL PUNTO FOTOGRAFIADO", "LONGITUD DEL PUNTO FOTOGRAFIADO"
+            "LATITUD DEL PUNTO FOTOGRAFIADO", "LONGITUD DEL PUNTO FOTOGRAFIADO"
         ])
-    # Fondo gris a columnas E y F
         for col in ['F', 'G']:
             ws[f"{col}2"].fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
         wb.save(archivo_excel)
@@ -120,17 +121,14 @@ async def subir_archivos_drive_diariamente(context: ContextTypes.DEFAULT_TYPE):
         for archivo in os.listdir(REPORTES_DIR):
             if archivo.endswith('.xlsx'):
                 ruta_archivo = os.path.join(REPORTES_DIR, archivo)
-                match = re.match(r'grupo_([\-\d]+)_([\d\-]+)\.xlsx', archivo)
+                match = re.match(r'grupo_(.+)_([\d\-]+)\.xlsx', archivo)
                 if match:
-                    group_id = int(match.group(1))
+                    nombre_grupo_archivo = match.group(1)
                     fecha = match.group(2)
-                    try:
-                        chat = await context.bot.get_chat(group_id)
-                        nombre_grupo = chat.title or f"GRUPO_{group_id}"
-                    except:
-                        nombre_grupo = f"GRUPO_{group_id}"
-                    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
+
+                    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo_archivo.upper().strip())
                     carpeta_grupo = get_or_create_folder(drive_service, nombre_limpio, parent_id=folder_id)
+
                     try:
                         file_metadata = {
                             'name': f"{nombre_limpio}_{fecha}.xlsx",
@@ -143,10 +141,11 @@ async def subir_archivos_drive_diariamente(context: ContextTypes.DEFAULT_TYPE):
                     except Exception as e:
                         print(f"❌ Error al subir {archivo}: {e}")
                 else:
-                    print(f"⚠️ Archivo ignorado: {archivo}")
+                    print(f"⚠ Archivo ignorado: {archivo}")
         print("✅ Subida automática completada.")
     except Exception as e:
-        print(f"❌ Error general en subida: {e}")
+        print(f"❌ Error general en subida: {e}")
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type in ['group', 'supergroup']:
@@ -363,13 +362,15 @@ async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
+    chat = update.effective_chat
     if user_id not in ID_USUARIOS_AUTORIZADOS:
         return await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
-    nombre_grupo = update.effective_chat.title or f"GRUPO_{chat_id}"
+    
+    nombre_grupo = chat.title or f"GRUPO_{chat.id}"
     nombre_archivo = obtener_nombre_archivo_excel(nombre_grupo)
+
     if os.path.exists(nombre_archivo):
-        await context.bot.send_document(chat_id=chat_id, document=open(nombre_archivo, "rb"))
+        await context.bot.send_document(chat_id=chat.id, document=open(nombre_archivo, "rb"))
     else:
         await update.message.reply_text("❌ No hay registros para exportar hoy.")
 
