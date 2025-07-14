@@ -64,7 +64,41 @@ def inicializar_excel(nombre_archivo):
     ws['F1'].fill = fill
     ws['G1'].fill = fill
     wb.save(nombre_archivo)
+    
+def guardar_en_excel(update, context, datos):
+    from io import BytesIO
+    from PIL import Image as PILImage
 
+    group_id = update.effective_chat.id
+    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    archivo_excel = obtener_nombre_archivo_excel(group_id)
+
+    if not os.path.exists(archivo_excel):
+        inicializar_excel(archivo_excel)
+
+    wb = load_workbook(archivo_excel)
+    ws = wb.active
+    fila = ws.max_row + 1
+
+    ws.cell(row=fila, column=1, value=fecha_actual)
+    ws.cell(row=fila, column=2, value=datos.get("calle", ""))
+
+    fotos = [datos.get("foto_antes"), datos.get("foto_despues"), datos.get("foto_etiqueta")]
+    for idx, foto in enumerate(fotos, start=3):
+        if foto:
+            with open(foto, 'rb') as f:
+                img = PILImage.open(f)
+                output = BytesIO()
+                img.save(output, format='PNG')
+                output.seek(0)
+                imagen_excel = ExcelImage(output)
+                imagen_excel.width = 140
+                imagen_excel.height = 120
+                ws.add_image(imagen_excel, f"{chr(64 + idx)}{fila}")
+
+    ws.cell(row=fila, column=6, value=datos.get("latitud", ""))
+    ws.cell(row=fila, column=7, value=datos.get("longitud", ""))
+    wb.save(archivo_excel)
 def get_or_create_folder(service, folder_name, parent_id=None):
     query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     if parent_id:
