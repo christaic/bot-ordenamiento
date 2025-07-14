@@ -348,7 +348,7 @@ async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if all(k in datos for k in ['foto_antes', 'foto_despues', 'foto_etiqueta']):
         datos['latitud'] = update.message.location.latitude
         datos['longitud'] = update.message.location.longitude
-        loop = asyncio.get_running_lopp()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, guardar_en_excel, update, context,datos)
         await update.message.reply_text(
             "✅ ¡Registro completado con éxito! 🎯\n\n"
