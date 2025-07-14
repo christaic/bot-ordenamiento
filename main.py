@@ -75,17 +75,18 @@ def guardar_en_excel(update, context, datos):
     archivo_excel = obtener_nombre_archivo_excel(group_id)
 
     if not os.path.exists(archivo_excel):
-    wb = Workbook()
-    ws = wb.active
-    ws.append(["1)", datetime.now().strftime("%Y-%m-%d")])
-    ws.append([
-        "FECHA", "CALLE Y CUADRA", "FOTO ANTES", "FOTO DESPUÉS", "FOTO ETIQUETA",
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["1)", datetime.now().strftime("%Y-%m-%d")])
+        ws.append([
+            "FECHA", "CALLE Y CUADRA", "FOTO ANTES", "FOTO DESPUÉS", "FOTO ETIQUETA",
         "LATITUD DEL PUNTO FOTOGRAFIADO", "LONGITUD DEL PUNTO FOTOGRAFIADO"
-    ])
+        ])
     # Fondo gris a columnas E y F
-    for col in ['F', 'G']:
-        ws[f"{col}2"].fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-    wb.save(archivo_excel)
+        for col in ['F', 'G']:
+            ws[f"{col}2"].fill =
+    PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+        wb.save(archivo_excel)
     
 def get_or_create_folder(service, folder_name, parent_id=None):
     query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
