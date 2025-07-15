@@ -76,29 +76,29 @@ def guardar_en_excel(update, context, datos):
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archivo_excel = obtener_nombre_archivo_excel(nombre_limpio)
 
-    # Crear nuevo Excel si no existe
+    # Crear nuevo archivo si no existe
     if not os.path.exists(archivo_excel):
         wb = Workbook()
         ws = wb.active
-        ws.append(["1)", datetime.now().strftime("%Y-%m-%d")])
         ws.append([
             "FECHA", "CALLE Y CUADRA", "FOTO ANTES", "FOTO DESPUÉS", "FOTO ETIQUETA",
             "LATITUD DEL PUNTO FOTOGRAFIADO", "LONGITUD DEL PUNTO FOTOGRAFIADO"
         ])
         for col in ['F', 'G']:
-            ws[f"{col}2"].fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+            ws[f"{col}1"].fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
         wb.save(archivo_excel)
         print(f"📝 Nuevo archivo Excel creado: {archivo_excel}")
 
-    # Abrir y escribir los datos
+    # Abrir archivo existente
     wb = load_workbook(archivo_excel)
     ws = wb.active
     fila = ws.max_row + 1
 
+    # Insertar datos
     ws.cell(row=fila, column=1, value=fecha_actual)
     ws.cell(row=fila, column=2, value=datos.get("calle_y_cuadra", ""))
 
-    # Cargar imágenes
+    # Insertar imágenes
     fotos = [datos.get("foto_antes"), datos.get("foto_despues"), datos.get("foto_etiqueta")]
     for idx, ruta in enumerate(fotos, start=3):
         if ruta:
@@ -108,13 +108,19 @@ def guardar_en_excel(update, context, datos):
                 img.save(output, format='PNG')
                 output.seek(0)
                 imagen_excel = ExcelImage(output)
-                imagen_excel.width = 140
-                imagen_excel.height = 120
-                ws.add_image(imagen_excel, f"{chr(64 + idx)}{fila}")
+                imagen_excel.width = 180  # Más ancho
+                imagen_excel.height = 140  # Más alto
+                cell_coord = f"{chr(64 + idx)}{fila}"
+                ws.add_image(imagen_excel, cell_coord)
+                # Ajustar ancho de columna automáticamente (rústico)
+                ws.column_dimensions[chr(64 + idx)].width = 25
+            # Ajustar alto de la fila para que se vea bien la imagen
+            ws.row_dimensions[fila].height = 110
 
+    # Coordenadas
     ws.cell(row=fila, column=6, value=datos.get("latitud", ""))
     ws.cell(row=fila, column=7, value=datos.get("longitud", ""))
-    
+
     wb.save(archivo_excel)
     print(f"✅ Registro agregado al Excel: {archivo_excel}")
     
