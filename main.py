@@ -156,7 +156,7 @@ async def subir_archivos_drive_diariamente(context: ContextTypes.DEFAULT_TYPE):
         for archivo in os.listdir(REPORTES_DIR):
             if archivo.endswith('.xlsx'):
                 ruta_archivo = os.path.join(REPORTES_DIR, archivo)
-                match = re.match(r'grupo_(.+)_([\d\-]+)\.xlsx', archivo)
+                match = re.match(r'(.+)_([\d\-]+)\.xlsx', archivo)
                 if match:
                     nombre_grupo_archivo = match.group(1)
                     fecha = match.group(2)
