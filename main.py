@@ -290,6 +290,7 @@ async def manejar_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
             "✅ ¡Excelente! Ya tengo el nombre de la calle y cuadra 🛣️\n\n"
             "📸 Ahora toca tomar foto del antes 💪.\n\n"
+            "📲 Recuerda usar el *AppNoteCam* para la toma de fotos📸\n\n"
             "🔔 Recuerda que las fotos se toman de manera vertical🧐\n\n"
             "Presiona *Continuar* para seguir con la foto del ANTES 💪 o *Repetir* si deseas hacer alguna correción. 🧐\n\n"
             "👉 Cuando estés listo, selecciona una opción:",
@@ -326,6 +327,7 @@ async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "📸 ¡Genial! Ya tengo la foto del ANTES 👀\n\n"
             "🎯 Ahora necesito que tomes la foto del DESPUÉS 📸\n\n"
+            "📲 Recuerda usar el *AppNoteCam* para la toma de fotos📸\n\n"
             "🔔 Recuerda que las fotos se toman de manera vertical🧐\n\n"
             "Presiona *Continuar* para seguir con la foto del DESPUÉS 💪 o *Repetir* si deseas hacer alguna correción. 🧐",
             parse_mode="Markdown",
@@ -343,6 +345,8 @@ async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "📷 ¡Excelente trabajo! Ya tengo la foto del DESPUÉS ✅\n\n"
             "🔖 Ahora toca foto de la ETIQUETA que dejaste en la fibra ADSS.\n\n"
+            "📲 Recuerda usar el *AppNoteCam* para la toma de fotos📸\n\n"
+            "📷 La foto de la etiqueta debe ser de cerca y con el rotulo que escribiste legible ✍️ 🧐\n\n"
             "🔔 Recuerda que las fotos se toman de manera vertical🧐\n\n"
             "Presiona *Continuar* para seguir con la foto del la ETIQUETA 💪 o *Repetir* si deseas hacer alguna correción. 🧐",
             parse_mode="Markdown",
