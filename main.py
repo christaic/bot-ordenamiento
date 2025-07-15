@@ -49,8 +49,7 @@ def crear_directorio_excel():
 
 def obtener_nombre_archivo_excel(nombre_grupo):
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
-    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
-    return f"reportes/{nombre_limpio}_{fecha_actual}.xlsx"
+    return f"reportes/{nombre_grupo}_{fecha_actual}.xlsx"
 
 def inicializar_excel(nombre_archivo):
     wb = Workbook()
@@ -402,8 +401,9 @@ async def exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in ID_USUARIOS_AUTORIZADOS:
         return await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
     
-    nombre_grupo = chat.title or f"GRUPO_{chat.id}"
-    nombre_archivo = obtener_nombre_archivo_excel(nombre_grupo)
+    nombre_grupo = update.effective_chat.title or f"GRUPO_{chat_id}"
+    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
+    nombre_archivo = obtener_nombre_archivo_excel(nombre_limpio)
 
     if os.path.exists(nombre_archivo):
         await context.bot.send_document(chat_id=chat.id, document=open(nombre_archivo, "rb"))
