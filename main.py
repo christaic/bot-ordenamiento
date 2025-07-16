@@ -509,8 +509,8 @@ def subir_excel_a_drive(update, context):
     nombre_archivo = f"{nombre_limpio}_{fecha_actual}.xlsx"
     ruta_archivo = os.path.join("reportes", nombre_archivo)
 
-        print(f"⚠️ Archivo no encontrado: {ruta_archivo}")
     if not os.path.exists(ruta_archivo):
+        print(f"⚠️ Archivo no encontrado: {ruta_archivo}")
         logging.warning(f"No se encontró el archivo para subir: {ruta_archivo}")
         return
 
