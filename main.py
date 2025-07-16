@@ -145,6 +145,7 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 # ✅ Aquí colocas la función de manejo de errores
 async def manejar_errores(update: object, context: ContextTypes.DEFAULT_TYPE):
     logging.error(f"❌ Error inesperado: {context.error}")
+    try:
         for archivo in os.listdir(REPORTES_DIR):
             if archivo.endswith('.xlsx'):
                 ruta_archivo = os.path.join(REPORTES_DIR, archivo)
@@ -171,8 +172,7 @@ async def manejar_errores(update: object, context: ContextTypes.DEFAULT_TYPE):
                     print(f"⚠ Archivo ignorado: {archivo}")
         print("✅ Subida automática completada.")
     except Exception as e:
-        print(f"❌ Error general en subida: {e}")
-
+        print(f"❌ Error general en subida: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type in ['group', 'supergroup']:
