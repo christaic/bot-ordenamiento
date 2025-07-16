@@ -388,7 +388,6 @@ async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
         datos['longitud'] = update.message.location.longitude
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, guardar_en_excel, update, context,datos)
-        await loop.run_in_executor(None, subir_excel_a_drive, update, context)
         await update.message.reply_text(
             "✅ ¡Registro completado con éxito! 🎯\n\n"
             "📊 Se ha guardado la informacion y fotos compartidas correctamente.\n\n"
@@ -506,6 +505,49 @@ async def main():
     app.add_error_handler(manejar_errores)
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.run_polling()
+
+
+def subir_excel_a_drive(update, context):
+    chat_id = update.effective_chat.id
+    grupo = context.chat_data.get("nombre_grupo", f"grupo_{chat_id}")
+    nombre_limpio = re.sub(r'[\\/*?:"<>|]', "_", grupo.upper().strip())
+    fecha_actual = datetime.now().strftime("%Y-%m-%d")
+    nombre_archivo = f"{nombre_limpio}_{fecha_actual}.xlsx"
+    ruta_archivo = os.path.join("reportes", nombre_archivo)
+
+    if not os.path.exists(ruta_archivo):
+        logging.warning(f"No se encontró el archivo para subir: {ruta_archivo}")
+        return
+
+    wb = load_workbook(ruta_archivo)
+    if wb.active.max_row < 2:
+        logging.info(f"Archivo vacío, no se sube: {ruta_archivo}")
+        return
+
+    creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if not creds_json:
+        logging.error("Credenciales de Google no encontradas.")
+        return
+    creds_dict = json.loads(creds_json)
+    credentials = service_account.Credentials.from_service_account_info(creds_dict)
+    service = build("drive", "v3", credentials=credentials)
+
+    folder_id_principal = get_or_create_folder(service, "REPORTE_ETIQUETADO", None)
+    folder_id_grupo = get_or_create_folder(service, nombre_limpio, folder_id_principal)
+
+    file_metadata = {
+        "name": nombre_archivo,
+        "parents": [folder_id_grupo]
+    }
+    media = MediaFileUpload(ruta_archivo, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response = service.files().list(q=f"'{folder_id_grupo}' in parents and name='{nombre_archivo}'", spaces='drive').execute()
+    existing_files = response.get('files', [])
+    if existing_files:
+        service.files().delete(fileId=existing_files[0]['id']).execute()
+
+    service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+    logging.info(f"📤 Archivo subido a Drive: {nombre_archivo}")
+
 
 if __name__ == "__main__":
     import asyncio
