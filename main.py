@@ -145,43 +145,7 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 # ✅ Aquí colocas la función de manejo de errores
 async def manejar_errores(update: object, context: ContextTypes.DEFAULT_TYPE):
     logging.error(f"❌ Error inesperado: {context.error}")
-
-async def subir_archivos_drive_diariamente(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        print("⏳ Ejecutará subida a horas 10:00 pm.")
-        REPORTES_DIR = "reportes"
-        folder_name = 'REPORTE_ETIQUETADO'
-        folder_id = get_or_create_folder(drive_service, folder_name)
-
-        for archivo in os.listdir(REPORTES_DIR):
-            if archivo.endswith('.xlsx'):
-                ruta_archivo = os.path.join(REPORTES_DIR, archivo)
-                match = re.match(r'(.+)_([\d\-]+)\.xlsx', archivo)
-                if match:
-                    nombre_grupo_archivo = match.group(1)
-                    fecha = match.group(2)
-
-                    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo_archivo.upper().strip())
-                    carpeta_grupo = get_or_create_folder(drive_service, nombre_limpio, parent_id=folder_id)
-
-                    try:
-                        file_metadata = {
-                            'name': f"{nombre_limpio}_{fecha}.xlsx",
-                            'parents': [carpeta_grupo],
-                            'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                        }
-                        media = MediaFileUpload(ruta_archivo, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                        drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-                        print(f"✅ Subido: {archivo}")
-                    except Exception as e:
-                        print(f"❌ Error al subir {archivo}: {e}")
-                else:
-                    print(f"⚠ Archivo ignorado: {archivo}")
-        print("✅ Subida automática completada.")
-    except Exception as e:
-        print(f"❌ Error general en subida: {e}")
-
-
+    
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type in ['group', 'supergroup']:
         if not (update.message.text.startswith(f"/start@{context.bot.username}") or update.message.text.startswith("/start ") or (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id)):
