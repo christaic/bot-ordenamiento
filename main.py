@@ -388,6 +388,7 @@ async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
         datos['longitud'] = update.message.location.longitude
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, guardar_en_excel, update, context,datos)
+        await loop.run_in_executor(None, subir_excel_a_drive, update, context)
         await update.message.reply_text(
             "✅ ¡Registro completado con éxito! 🎯\n\n"
             "📊 Se ha guardado la informacion y fotos compartidas correctamente.\n\n"
