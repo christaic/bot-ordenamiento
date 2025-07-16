@@ -456,7 +456,6 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 async def main():
     crear_directorio_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    await app.bot.delete_webhook(drop_pending_updates=True)  # Esto es clave
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ayuda", ayuda))
     app.add_handler(CommandHandler("exportar", exportar))
