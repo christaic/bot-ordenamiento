@@ -499,7 +499,6 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_texto))
     app.add_handler(MessageHandler(filters.PHOTO, manejar_foto))
     app.add_handler(MessageHandler(filters.LOCATION, manejar_ubicacion))
-    app.job_queue.run_daily(subir_archivos_drive_diariamente,time=time(hour=3, minute=0, tzinfo=timezone.utc))  # 10:00 p.m. hora Perú
     app.add_handler(CallbackQueryHandler(manejo_navegacion, pattern=r"^(repetir_paso_|continuar_paso_)"))
     app.add_handler(MessageHandler(~filters.TEXT & ~filters.PHOTO & ~filters.LOCATION, manejar_no_permitido))
     app.add_handler(CallbackQueryHandler(callback_handler))
