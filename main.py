@@ -145,14 +145,6 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 # ✅ Aquí colocas la función de manejo de errores
 async def manejar_errores(update: object, context: ContextTypes.DEFAULT_TYPE):
     logging.error(f"❌ Error inesperado: {context.error}")
-
-async def subir_archivos_drive_diariamente(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        print("⏳ Ejecutará subida a horas 10:00 pm.")
-        REPORTES_DIR = "reportes"
-        folder_name = 'REPORTE_ETIQUETADO'
-        folder_id = get_or_create_folder(drive_service, folder_name)
-
         for archivo in os.listdir(REPORTES_DIR):
             if archivo.endswith('.xlsx'):
                 ruta_archivo = os.path.join(REPORTES_DIR, archivo)
@@ -508,6 +500,8 @@ async def main():
 
 
 def subir_excel_a_drive(update, context):
+    print("📤 Intentando subir al Drive...")
+    logging.info("📤 Intentando subir al Drive...")
     chat_id = update.effective_chat.id
     grupo = context.chat_data.get("nombre_grupo", f"grupo_{chat_id}")
     nombre_limpio = re.sub(r'[\\/*?:"<>|]', "_", grupo.upper().strip())
@@ -515,24 +509,30 @@ def subir_excel_a_drive(update, context):
     nombre_archivo = f"{nombre_limpio}_{fecha_actual}.xlsx"
     ruta_archivo = os.path.join("reportes", nombre_archivo)
 
+        print(f"⚠️ Archivo no encontrado: {ruta_archivo}")
     if not os.path.exists(ruta_archivo):
         logging.warning(f"No se encontró el archivo para subir: {ruta_archivo}")
         return
 
     wb = load_workbook(ruta_archivo)
+        print("⚠️ Archivo vacío, no se sube.")
     if wb.active.max_row < 2:
         logging.info(f"Archivo vacío, no se sube: {ruta_archivo}")
         return
 
     creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        print("❌ GOOGLE_CREDENTIALS_JSON no definida")
     if not creds_json:
         logging.error("Credenciales de Google no encontradas.")
         return
     creds_dict = json.loads(creds_json)
+        print("🔑 Credenciales cargadas correctamente")
     credentials = service_account.Credentials.from_service_account_info(creds_dict)
     service = build("drive", "v3", credentials=credentials)
 
+        print("📁 Buscando carpeta principal...")
     folder_id_principal = get_or_create_folder(service, "REPORTE_ETIQUETADO", None)
+        print(f"📁 Buscando carpeta del grupo: {nombre_limpio}")
     folder_id_grupo = get_or_create_folder(service, nombre_limpio, folder_id_principal)
 
     file_metadata = {
@@ -545,6 +545,7 @@ def subir_excel_a_drive(update, context):
     if existing_files:
         service.files().delete(fileId=existing_files[0]['id']).execute()
 
+        print("📤 Subiendo archivo al Drive...")
     service.files().create(body=file_metadata, media_body=media, fields="id").execute()
     logging.info(f"📤 Archivo subido a Drive: {nombre_archivo}")
 
