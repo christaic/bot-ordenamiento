@@ -499,6 +499,7 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_texto))
     app.add_handler(MessageHandler(filters.PHOTO, manejar_foto))
     app.add_handler(MessageHandler(filters.LOCATION, manejar_ubicacion))
+    app.job_queue.run_daily(subir_archivos_drive_diariamente,time=time(hour=3, minute=0, tzinfo=timezone.utc))  # 10:00 p.m. hora Perú
     app.add_handler(CallbackQueryHandler(manejo_navegacion, pattern=r"^(repetir_paso_|continuar_paso_)"))
     app.add_handler(MessageHandler(~filters.TEXT & ~filters.PHOTO & ~filters.LOCATION, manejar_no_permitido))
     app.add_handler(CallbackQueryHandler(callback_handler))
@@ -512,45 +513,3 @@ if __name__ == "__main__":
 
     nest_asyncio.apply()
     asyncio.run(main())
-
-# 📁 Función para subir archivo Excel al Drive (al final del registro)
-def subir_excel_a_drive(update, context):
-    try:
-        REPORTES_DIR = "reportes"
-        folder_name = 'REPORTE_ETIQUETADO'
-        if not os.path.exists(REPORTES_DIR):
-            os.makedirs(REPORTES_DIR)
-
-        # Recorremos los archivos Excel del día
-        for archivo in os.listdir(REPORTES_DIR):
-            if archivo.endswith('.xlsx'):
-                ruta_archivo = os.path.join(REPORTES_DIR, archivo)
-                if not os.path.exists(ruta_archivo):
-                    print(f"⚠️ Archivo no encontrado: {ruta_archivo}")
-                    continue
-                if os.path.getsize(ruta_archivo) == 0:
-                    print("⚠️ Archivo vacío, no se sube.")
-                    continue
-
-                match = re.match(r'(.+)_([\d\-]+)\.xlsx', archivo)
-                if match:
-                    nombre_grupo_archivo = match.group(1)
-                    fecha = match.group(2)
-                    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo_archivo.upper().strip())
-
-                    folder_id = get_or_create_folder(drive_service, 'REPORTE_ETIQUETADO')
-                    carpeta_grupo = get_or_create_folder(drive_service, nombre_limpio, parent_id=folder_id)
-
-                    try:
-                        file_metadata = {
-                            'name': f"{nombre_limpio}_{fecha}.xlsx",
-                            'parents': [carpeta_grupo],
-                            'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                        }
-                        media = MediaFileUpload(ruta_archivo, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                        drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-                        print(f"✅ Subido a Drive: {archivo}")
-                    except Exception as e:
-                        print(f"❌ Error al subir {archivo}: {e}")
-    except Exception as e:
-        print(f"❌ Error general en subida: {e}")
