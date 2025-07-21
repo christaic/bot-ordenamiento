@@ -1,10 +1,10 @@
-# main.py
+# main.py final con subida secuencial a Drive a las 18:30 hora Perú
 import os
 import re
 import json
 import logging
 import asyncio
-from datetime import datetime, timedelta, time, timezone 
+from datetime import datetime
 import nest_asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -14,16 +14,19 @@ from telegram.ext import (
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.styles import PatternFill
-from PIL import Image as PILImage
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2 import service_account
-
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from pytz import timezone
+from PIL import Image as PILImage
 
 # CONFIGURA AQUÍ
 BOT_TOKEN = "8004038750:AAH2AzacU5EN1uWzsTfxKfzNyCR0M4pIoxU"
 ID_USUARIOS_AUTORIZADOS = [7175478712, 7909467383, 5809993174]
 ID_GRUPO_ASESORES = -1002875911448
+NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
+DRIVE_ID = "0APLUfvLE2SqAUk9PVA"  # Coloca aquí tu ID de unidad compartida
 
 # VARIABLES
 registro_datos = {}
@@ -35,14 +38,67 @@ cred_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
 if not cred_json:
     raise ValueError("La variable de entorno GOOGLE_CREDENTIALS_JSON no está definida.")
 
-# Guardarlo temporalmente como credentials.json
 with open("credentials.json", "w") as f:
     f.write(cred_json)
 
-# Ahora puedes usarlo normalmente
 creds = service_account.Credentials.from_service_account_file("credentials.json")
 drive_service = build('drive', 'v3', credentials=creds)
 
+# ---- FUNCIONES DE GOOGLE DRIVE ----
+def get_or_create_folder(service, folder_name, parent_id=None):
+    query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    if parent_id:
+        query += f" and '{parent_id}' in parents"
+    results = service.files().list(
+        q=query,
+        corpora='drive',
+        driveId=DRIVE_ID,
+        includeItemsFromAllDrives=True,
+        supportsAllDrives=True,
+        fields="files(id, name)"
+    ).execute()
+    folders = results.get('files', [])
+    if folders:
+        return folders[0]['id']
+    metadata = {'name': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
+    if parent_id:
+        metadata['parents'] = [parent_id]
+    folder = service.files().create(body=metadata, fields='id', supportsAllDrives=True).execute()
+    return folder['id']
+
+def subir_archivo_excel_grupo(nombre_grupo, archivo_local):
+    carpeta_principal_id = get_or_create_folder(drive_service, NOMBRE_CARPETA_DRIVE, parent_id=DRIVE_ID)
+    carpeta_grupo_id = get_or_create_folder(drive_service, nombre_grupo, parent_id=carpeta_principal_id)
+
+    media = MediaFileUpload(
+        archivo_local,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        resumable=True
+    )
+    metadata_archivo = {'name': os.path.basename(archivo_local), 'parents': [carpeta_grupo_id]}
+    archivo = drive_service.files().create(
+        body=metadata_archivo,
+        media_body=media,
+        fields='id, webViewLink',
+        supportsAllDrives=True
+    ).execute()
+    logging.info(f"✅ Subido {archivo_local} al grupo {nombre_grupo} en Drive.")
+    return archivo.get('webViewLink')
+
+def subir_archivos_drive_secuencial():
+    if not os.path.exists("reportes"):
+        return
+    for archivo in os.listdir("reportes"):
+        if archivo.endswith(".xlsx"):
+            grupo = archivo.split("_")[0]
+            ruta_archivo = os.path.join("reportes", archivo)
+            try:
+                enlace = subir_archivo_excel_grupo(grupo, ruta_archivo)
+                logging.info(f"🔗 Enlace: {enlace}")
+            except Exception as e:
+                logging.error(f"❌ Error al subir {archivo}: {e}")
+
+# ---- FUNCIONES DE EXCEL Y BOT ----
 def crear_directorio_excel():
     if not os.path.exists("reportes"):
         os.makedirs("reportes")
@@ -51,31 +107,14 @@ def obtener_nombre_archivo_excel(nombre_grupo):
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
     return f"reportes/{nombre_grupo}_{fecha_actual}.xlsx"
 
-def inicializar_excel(nombre_archivo):
-    wb = Workbook()
-    ws = wb.active
-    ws.append([
-        'FECHA Y HORA', 'CALLE Y CUADRA', 'FOTO ANTES', 'FOTO DESPUÉS', 'FOTO ETIQUETA',
-        'LATITUD DEL PUNTO FOTOGRAFIADO', 'LONGITUD DEL PUNTO FOTOGRAFIADO'
-    ])
-    for col in ['C', 'D', 'E']:
-        ws.column_dimensions[col].width = 30
-        ws.row_dimensions[2].height = 120
-    fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
-    ws['F1'].fill = fill
-    ws['G1'].fill = fill
-    wb.save(nombre_archivo)
-    
 def guardar_en_excel(update, context, datos):
     from io import BytesIO
-    from PIL import Image as PILImage
 
     nombre_grupo = update.effective_chat.title or f"GRUPO_{update.effective_chat.id}"
     nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archivo_excel = obtener_nombre_archivo_excel(nombre_limpio)
 
-    # Crear nuevo archivo si no existe
     if not os.path.exists(archivo_excel):
         wb = Workbook()
         ws = wb.active
@@ -88,16 +127,12 @@ def guardar_en_excel(update, context, datos):
         wb.save(archivo_excel)
         print(f"📝 Nuevo archivo Excel creado: {archivo_excel}")
 
-    # Abrir archivo existente
     wb = load_workbook(archivo_excel)
     ws = wb.active
     fila = ws.max_row + 1
-
-    # Insertar datos
     ws.cell(row=fila, column=1, value=fecha_actual)
     ws.cell(row=fila, column=2, value=datos.get("calle_y_cuadra", ""))
 
-    # Insertar imágenes
     fotos = [datos.get("foto_antes"), datos.get("foto_despues"), datos.get("foto_etiqueta")]
     for idx, ruta in enumerate(fotos, start=3):
         if ruta:
@@ -107,35 +142,17 @@ def guardar_en_excel(update, context, datos):
                 img.save(output, format='PNG')
                 output.seek(0)
                 imagen_excel = ExcelImage(output)
-                imagen_excel.width = 180  # Más ancho
-                imagen_excel.height = 140  # Más alto
+                imagen_excel.width = 120
+                imagen_excel.height = 120
                 cell_coord = f"{chr(64 + idx)}{fila}"
                 ws.add_image(imagen_excel, cell_coord)
-                # Ajustar ancho de columna automáticamente (rústico)
                 ws.column_dimensions[chr(64 + idx)].width = 25
-            # Ajustar alto de la fila para que se vea bien la imagen
-            ws.row_dimensions[fila].height = 110
+            ws.row_dimensions[fila].height = 90
 
-    # Coordenadas
     ws.cell(row=fila, column=6, value=datos.get("latitud", ""))
     ws.cell(row=fila, column=7, value=datos.get("longitud", ""))
-
     wb.save(archivo_excel)
     print(f"✅ Registro agregado al Excel: {archivo_excel}")
-    
-def get_or_create_folder(service, folder_name, parent_id=None):
-    query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-    if parent_id:
-        query += f" and '{parent_id}' in parents"
-    results = service.files().list(q=query, spaces='drive', fields="files(id, name)").execute()
-    folders = results.get('files', [])
-    if folders:
-        return folders[0]['id']
-    metadata = {'name': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
-    if parent_id:
-        metadata['parents'] = [parent_id]
-    folder = service.files().create(body=metadata, fields='id').execute()
-    return folder['id']
 
 # COMANDOS
 # Funciones principales
@@ -451,8 +468,7 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.message.reply_text(mensajes.get(paso, "❌ Este contenido no es válido para este paso.❌"))
 
-
-# MAIN
+# ---- MAIN ----
 async def main():
     crear_directorio_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -466,12 +482,22 @@ async def main():
     app.add_handler(MessageHandler(~filters.TEXT & ~filters.PHOTO & ~filters.LOCATION, manejar_no_permitido))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_error_handler(manejar_errores)
+
+    # Programar subida diaria a las 18:30 hora Perú
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        subir_archivos_drive_secuencial,
+        'cron',
+        hour=18,
+        minute=30,
+        timezone=timezone('America/Lima')
+    )
+    scheduler.start()
+
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.run_polling()
 
 if __name__ == "__main__":
     import asyncio
-    import nest_asyncio
-
     nest_asyncio.apply()
     asyncio.run(main())
