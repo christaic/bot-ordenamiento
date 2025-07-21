@@ -93,8 +93,13 @@ def subir_archivos_drive_secuencial():
             grupo = archivo.split("_")[0]
             ruta_archivo = os.path.join("reportes", archivo)
             try:
-                enlace = subir_archivo_excel_grupo(grupo, ruta_archivo)
-                logging.info(f"🔗 Enlace: {enlace}")
+                subir_archivo_excel_grupo(grupo, ruta_archivo)
+                logging.info(f"✅ Subido: {archivo}")
+
+                # 🚀 Eliminar archivo local tras subirlo
+                os.remove(ruta_archivo)
+                logging.info(f"🧹 Archivo eliminado: {archivo}")
+
             except Exception as e:
                 logging.error(f"❌ Error al subir {archivo}: {e}")
 
@@ -142,8 +147,8 @@ def guardar_en_excel(update, context, datos):
                 img.save(output, format='PNG')
                 output.seek(0)
                 imagen_excel = ExcelImage(output)
-                imagen_excel.width = 180
-                imagen_excel.height = 140
+                imagen_excel.width = 150
+                imagen_excel.height = 120
                 cell_coord = f"{chr(64 + idx)}{fila}"
                 ws.add_image(imagen_excel, cell_coord)
                 ws.column_dimensions[chr(64 + idx)].width = 25
