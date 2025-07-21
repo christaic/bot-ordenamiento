@@ -1,4 +1,4 @@
-# main.py final con subida secuencial a Drive a las 18:30 hora Perú
+# main.py final con comando /subirbackup y subida secuencial a las 18:30 hora Perú
 import os
 import re
 import json
@@ -98,7 +98,7 @@ def subir_archivos_drive_secuencial():
             except Exception as e:
                 logging.error(f"❌ Error al subir {archivo}: {e}")
 
-# ---- FUNCIONES DE EXCEL Y BOT ----
+# ---- FUNCIONES DE EXCEL ----
 def crear_directorio_excel():
     if not os.path.exists("reportes"):
         os.makedirs("reportes")
@@ -142,17 +142,36 @@ def guardar_en_excel(update, context, datos):
                 img.save(output, format='PNG')
                 output.seek(0)
                 imagen_excel = ExcelImage(output)
-                imagen_excel.width = 120
-                imagen_excel.height = 120
+                imagen_excel.width = 180
+                imagen_excel.height = 140
                 cell_coord = f"{chr(64 + idx)}{fila}"
                 ws.add_image(imagen_excel, cell_coord)
                 ws.column_dimensions[chr(64 + idx)].width = 25
-            ws.row_dimensions[fila].height = 90
+            ws.row_dimensions[fila].height = 110
 
     ws.cell(row=fila, column=6, value=datos.get("latitud", ""))
     ws.cell(row=fila, column=7, value=datos.get("longitud", ""))
     wb.save(archivo_excel)
     print(f"✅ Registro agregado al Excel: {archivo_excel}")
+
+# ---- NUEVO COMANDO: SUBIR BACKUP ----
+async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ID_USUARIOS_AUTORIZADOS:
+        return await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
+
+    nombre_grupo = update.effective_chat.title or f"GRUPO_{update.effective_chat.id}"
+    nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
+    archivo_excel = obtener_nombre_archivo_excel(nombre_limpio)
+
+    if os.path.exists(archivo_excel):
+        try:
+            enlace = subir_archivo_excel_grupo(nombre_limpio, archivo_excel)
+            await update.message.reply_text("☁️ *Carga Exitosa. Hasta mañana*", parse_mode="Markdown")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error al subir el archivo")
+    else:
+        await update.message.reply_text("❌ No hay archivo el día de hoy.")
 
 # COMANDOS
 # Funciones principales
@@ -278,7 +297,6 @@ async def manejar_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             reply_markup=botones
     )
-
 
 async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type in ['group', 'supergroup']:
@@ -475,6 +493,7 @@ async def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ayuda", ayuda))
     app.add_handler(CommandHandler("exportar", exportar))
+    app.add_handler(CommandHandler("upload", upload))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_texto))
     app.add_handler(MessageHandler(filters.PHOTO, manejar_foto))
     app.add_handler(MessageHandler(filters.LOCATION, manejar_ubicacion))
