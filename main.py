@@ -33,6 +33,10 @@ NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
 DRIVE_ID = "0APLUfvLE2SqAUk9PVA"  # Coloca aquí tu ID de unidad compartida
 ALLOWED_CHATS = [-1002640857147]  # Reemplaza con los IDs de tus grupos
 
+def chat_permitido(chat_id: int) -> bool:
+    """Verifica si el chat está permitido"""
+    return chat_id in ALLOWED_CHATS
+
 # VARIABLES
 registro_datos = {}
 nest_asyncio.apply()
@@ -48,11 +52,6 @@ with open("credentials.json", "w") as f:
 
 creds = service_account.Credentials.from_service_account_file("credentials.json")
 drive_service = build('drive', 'v3', credentials=creds)
-
-def chat_autorizado(update: Update) -> bool:
-    """Verifica si el chat está en la lista de grupos autorizados."""
-    chat_id = update.effective_chat.id
-    return chat_id in ALLOWED_CHATS
 
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
@@ -171,6 +170,10 @@ def guardar_en_excel(update, context, datos):
 
 # ---- NUEVO COMANDO: SUBIR BACKUP ----
 async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return  # Bloquea si el chat no está en ALLOWED_CHATS
+        
     user_id = update.effective_user.id
     if user_id not in ID_USUARIOS_AUTORIZADOS:
         return await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
@@ -191,6 +194,10 @@ async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # COMANDOS
 # Funciones principales
 async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     await update.message.reply_text("⚠️ Este tipo de mensaje no está permitido en este paso.")
 
 # ✅ Aquí colocas la función de manejo de errores
@@ -198,6 +205,10 @@ async def manejar_errores(update: object, context: ContextTypes.DEFAULT_TYPE):
     logging.error(f"❌ Error inesperado: {context.error}")
     
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return  # Bloquea el comando en otros grupos
+        
     if update.message.chat.type in ['group', 'supergroup']:
         if not (update.message.text.startswith(f"/start@{context.bot.username}") or update.message.text.startswith("/start ") or (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id)):
             return
@@ -214,6 +225,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "¡Vamos, tú puedes!💪"
     )
 async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     if update.message.chat.type in ['group', 'supergroup']:
         if not (
             update.message.text.startswith(f"/ayuda@{context.bot.username}")
@@ -240,6 +255,10 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texto, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(botones))
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
@@ -283,6 +302,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # FLUJO REGISTRO
 async def manejar_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     if update.message.chat.type in ['group', 'supergroup']:
         if not (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id):
             return
@@ -314,6 +337,10 @@ async def manejar_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     if update.message.chat.type in ['group', 'supergroup']:
         if not (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id):
             return
@@ -385,6 +412,10 @@ async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     if update.message.chat.type in ['group', 'supergroup']:
         if not (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id):
             return
@@ -414,6 +445,10 @@ async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     user_id = update.effective_user.id
     chat = update.effective_chat
     if user_id not in ID_USUARIOS_AUTORIZADOS:
@@ -429,6 +464,10 @@ async def exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ No hay registros para exportar hoy.")
 
 async def manejo_navegacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
@@ -502,6 +541,10 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(mensajes.get(paso, "❌ Este contenido no es válido para este paso.❌"))
 
 async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not chat_permitido(chat_id):
+        return
+        
     await update.message.reply_text(f"Chat ID: {update.effective_chat.id}")
 
 # ---- MAIN ----
