@@ -22,6 +22,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from PIL import Image as PILImage
 
+# Zona horaria de Lima (UTC-5)
+LIMA_TZ = timezone("America/Lima")
+
 # Cargar variables de entorno
 load_dotenv()  # <--- Coloca esta línea aquí
 
@@ -31,7 +34,7 @@ ID_USUARIOS_AUTORIZADOS = [7175478712, 7909467383, 5809993174]
 ID_GRUPO_ASESORES = -1002875911448
 NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
 DRIVE_ID = "0APLUfvLE2SqAUk9PVA"  # Coloca aquí tu ID de unidad compartida
-ALLOWED_CHATS = [-1002640857147]  # Reemplaza con los IDs de tus grupos
+ALLOWED_CHATS = [-1002640857147, -4718591093, -4831456255, -1002814603547, -1002838776671, -4951443286, -4870196969, -4824829490, -4979512409, -4903731585, -4910534813, -4845865029, -4643755320, -4860386920]  # Reemplaza con los IDs de tus grupos
 
 def chat_permitido(chat_id: int) -> bool:
     """Verifica si el chat está permitido"""
@@ -118,7 +121,7 @@ def crear_directorio_excel():
         os.makedirs("reportes")
 
 def obtener_nombre_archivo_excel(nombre_grupo):
-    fecha_actual = datetime.now().strftime("%Y-%m-%d")
+    fecha_actual = datetime.now(LIMA_TZ).strftime("%Y-%m-%d")
     return f"reportes/{nombre_grupo}_{fecha_actual}.xlsx"
 
 def guardar_en_excel(update, context, datos):
@@ -126,7 +129,7 @@ def guardar_en_excel(update, context, datos):
 
     nombre_grupo = update.effective_chat.title or f"GRUPO_{update.effective_chat.id}"
     nombre_limpio = re.sub(r'[\\/*?:"<>|]', '_', nombre_grupo.upper().strip())
-    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    fecha_actual = datetime.now(LIMA_TZ).strftime("%Y-%m-%d %H:%M:%S")
     archivo_excel = obtener_nombre_archivo_excel(nombre_limpio)
 
     if not os.path.exists(archivo_excel):
@@ -276,7 +279,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "asesor":
         nombre = query.from_user.full_name
         username = query.from_user.username
-        fecha_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha_hora = datetime.now(LIMA_TZ).strftime("%d/%m/%Y %H:%M")
         mensaje = f"📢 Se ha solicitado ayuda de un asesor:\n👤 Usuario: {nombre} (@{username})\n🆔 Grupo: {chat_id} ({update.effective_chat.title})\n⏰ Hora: {fecha_hora}"
         await context.bot.send_message(chat_id=ID_GRUPO_ASESORES, text=mensaje)
         await query.edit_message_text("✅ Se ha notificado a un asesor 👨‍💻👨‍💻. Te contactarán en un momento.")
