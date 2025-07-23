@@ -31,7 +31,7 @@ ID_USUARIOS_AUTORIZADOS = [7175478712, 7909467383, 5809993174]
 ID_GRUPO_ASESORES = -1002875911448
 NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
 DRIVE_ID = "0APLUfvLE2SqAUk9PVA"  # Coloca aquí tu ID de unidad compartida
-ALLOWED_CHATS = [-4761939849]  # Reemplaza con los IDs de tus grupos
+ALLOWED_CHATS = [-1002640857147]  # Reemplaza con los IDs de tus grupos
 
 # VARIABLES
 registro_datos = {}
