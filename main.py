@@ -6,6 +6,7 @@ import logging
 import asyncio
 from datetime import datetime
 import nest_asyncio
+from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler,
@@ -21,8 +22,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from PIL import Image as PILImage
 
+# Cargar variables de entorno
+load_dotenv()  # <--- Coloca esta línea aquí
+
 # CONFIGURA AQUÍ
-BOT_TOKEN = "8004038750:AAG8MThNPPyjybJUFt3y_7IGVOcAfWkDumA"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 ID_USUARIOS_AUTORIZADOS = [7175478712, 7909467383, 5809993174]
 ID_GRUPO_ASESORES = -1002875911448
 NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
