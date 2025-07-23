@@ -22,11 +22,12 @@ from pytz import timezone
 from PIL import Image as PILImage
 
 # CONFIGURA AQUÍ
-BOT_TOKEN = "8004038750:AAH2AzacU5EN1uWzsTfxKfzNyCR0M4pIoxU"
+BOT_TOKEN = "8004038750:AAG8MThNPPyjybJUFt3y_7IGVOcAfWkDumA"
 ID_USUARIOS_AUTORIZADOS = [7175478712, 7909467383, 5809993174]
 ID_GRUPO_ASESORES = -1002875911448
 NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
 DRIVE_ID = "0APLUfvLE2SqAUk9PVA"  # Coloca aquí tu ID de unidad compartida
+ALLOWED_CHATS = [-4761939849]  # Reemplaza con los IDs de tus grupos
 
 # VARIABLES
 registro_datos = {}
@@ -43,6 +44,11 @@ with open("credentials.json", "w") as f:
 
 creds = service_account.Credentials.from_service_account_file("credentials.json")
 drive_service = build('drive', 'v3', credentials=creds)
+
+def chat_autorizado(update: Update) -> bool:
+    """Verifica si el chat está en la lista de grupos autorizados."""
+    chat_id = update.effective_chat.id
+    return chat_id in ALLOWED_CHATS
 
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
@@ -491,6 +497,14 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.message.reply_text(mensajes.get(paso, "❌ Este contenido no es válido para este paso.❌"))
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not chat_autorizado(update):
+        return  # Ignora mensajes de chats no autorizados
+    await update.message.reply_text("¡Hola! Usa /ingreso para comenzar tu registro.")
+
+async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"Chat ID: {update.effective_chat.id}")
+
 # ---- MAIN ----
 async def main():
     crear_directorio_excel()
@@ -499,6 +513,7 @@ async def main():
     app.add_handler(CommandHandler("ayuda", ayuda))
     app.add_handler(CommandHandler("exportar", exportar))
     app.add_handler(CommandHandler("upload", upload))
+    app.add_handler(CommandHandler("id", get_chat_id))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manejar_texto))
     app.add_handler(MessageHandler(filters.PHOTO, manejar_foto))
     app.add_handler(MessageHandler(filters.LOCATION, manejar_ubicacion))
