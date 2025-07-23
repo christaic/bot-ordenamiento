@@ -56,6 +56,31 @@ with open("credentials.json", "w") as f:
 creds = service_account.Credentials.from_service_account_file("credentials.json")
 drive_service = build('drive', 'v3', credentials=creds)
 
+# ---- MENSAJES PARA BOT ----
+def mensaje_es_para_bot(update: Update, bot_username: str) -> bool:
+    message = update.message
+    if not message:
+        return False
+
+    # Responde si es respuesta a un mensaje del bot
+    if message.reply_to_message and message.reply_to_message.from_user.id == update.get_bot().id:
+        return True
+
+    # Comando dirigido al bot
+    if message.text and message.text.startswith("/"):
+        primer_comando = message.text.split()[0]  # /start@alguien
+        # Responde solo si el comando es para este bot o si no hay @ (comando "genérico")
+        if "@" in primer_comando:
+            return primer_comando.lower() == f"/start@{bot_username.lower()}" or \
+                   primer_comando.lower() == f"/ayuda@{bot_username.lower()}" or \
+                   primer_comando.lower() == f"/exportar@{bot_username.lower()}" or \
+                   primer_comando.lower() == f"/upload@{bot_username.lower()}" or \
+                   primer_comando.lower() == f"/id@{bot_username.lower()}"
+        else:
+            return primer_comando in ["/start", "/ayuda", "/exportar", "/upload", "/id"]
+
+    return False
+
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
     query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
@@ -176,7 +201,12 @@ async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not chat_permitido(chat_id):
         return  # Bloquea si el chat no está en ALLOWED_CHATS
-        
+
+    # 👇 Aquí validamos que el mensaje sea para tu bot
+    if update.message.chat.type in ['group', 'supergroup']:
+        if not mensaje_es_para_bot(update, context.bot.username):
+            return
+
     user_id = update.effective_user.id
     if user_id not in ID_USUARIOS_AUTORIZADOS:
         return await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
@@ -193,6 +223,7 @@ async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"❌ Error al subir el archivo")
     else:
         await update.message.reply_text("❌ No hay archivo el día de hoy.")
+
 
 # COMANDOS
 # Funciones principales
@@ -211,10 +242,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not chat_permitido(chat_id):
         return  # Bloquea el comando en otros grupos
-        
+
+    # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not (update.message.text.startswith(f"/start@{context.bot.username}") or update.message.text.startswith("/start ") or (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id)):
+        if not mensaje_es_para_bot(update, context.bot.username):
             return
+
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     registro_datos[(chat_id, user_id)] = {"paso": 0}
@@ -232,12 +265,9 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not chat_permitido(chat_id):
         return
         
+    # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not (
-            update.message.text.startswith(f"/ayuda@{context.bot.username}")
-            or update.message.text.startswith("/ayuda ")
-            or (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id)
-        ):
+        if not mensaje_es_para_bot(update, context.bot.username):
             return
 
     botones = [
@@ -451,7 +481,12 @@ async def exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not chat_permitido(chat_id):
         return
-        
+
+    # 👇 Aquí validamos que el mensaje sea para tu bot
+    if update.message.chat.type in ['group', 'supergroup']:
+        if not mensaje_es_para_bot(update, context.bot.username):
+            return
+    
     user_id = update.effective_user.id
     chat = update.effective_chat
     if user_id not in ID_USUARIOS_AUTORIZADOS:
@@ -547,7 +582,12 @@ async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not chat_permitido(chat_id):
         return
-        
+
+    # 👇 Aquí validamos que el mensaje sea para tu bot
+    if update.message.chat.type in ['group', 'supergroup']:
+        if not mensaje_es_para_bot(update, context.bot.username):
+            return
+    
     await update.message.reply_text(f"Chat ID: {update.effective_chat.id}")
 
 # ---- MAIN ----
