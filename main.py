@@ -501,11 +501,6 @@ async def manejar_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await update.message.reply_text(mensajes.get(paso, "❌ Este contenido no es válido para este paso.❌"))
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not chat_autorizado(update):
-        return  # Ignora mensajes de chats no autorizados
-    await update.message.reply_text("¡Hola! Usa /ingreso para comenzar tu registro.")
-
 async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Chat ID: {update.effective_chat.id}")
 
