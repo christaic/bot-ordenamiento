@@ -62,22 +62,17 @@ def mensaje_es_para_bot(update: Update, bot_username: str) -> bool:
     if not message:
         return False
 
-    # Responde si es respuesta a un mensaje del bot
+    # Si es respuesta a un mensaje del bot
     if message.reply_to_message and message.reply_to_message.from_user.id == update.get_bot().id:
         return True
 
-    # Comando dirigido al bot
+    # Si el mensaje contiene un comando
     if message.text and message.text.startswith("/"):
-        primer_comando = message.text.split()[0]  # /start@alguien
-        # Responde solo si el comando es para este bot o si no hay @ (comando "genérico")
+        primer_comando = message.text.split()[0].lower()
         if "@" in primer_comando:
-            return primer_comando.lower() == f"/start@{bot_username.lower()}" or \
-                   primer_comando.lower() == f"/ayuda@{bot_username.lower()}" or \
-                   primer_comando.lower() == f"/exportar@{bot_username.lower()}" or \
-                   primer_comando.lower() == f"/upload@{bot_username.lower()}" or \
-                   primer_comando.lower() == f"/id@{bot_username.lower()}"
+            return primer_comando.endswith(f"@{bot_username.lower()}")
         else:
-            return primer_comando in ["/start", "/ayuda", "/exportar", "/upload", "/id"]
+            return True
 
     return False
 
@@ -267,8 +262,13 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not mensaje_es_para_bot(update, context.bot.username):
-            return
+    texto = update.message.text.split()[0].lower()  # Primer "palabra" del mensaje (ej: /ayuda@OtroBot)
+    if "@" in texto:
+        if texto != f"/ayuda@{context.bot.username.lower()}":
+            return  # No es para tu bot
+    elif texto != "/ayuda":
+        return  # No es el comando esperado
+
 
     botones = [
         [InlineKeyboardButton("🔄 Reiniciar registro", callback_data="reiniciar")],
