@@ -1,3 +1,40 @@
-*.json
-__pycache__/
+# Archivos y carpetas de entorno
 .env
+venv/
+env/
+.venv/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de logs
+*.log
+logs/
+
+# Archivos temporales de IDEs
+.vscode/
+.idea/
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de caché
+*.egg-info
+*.egg
+.eggs/
+dist/
+build/
+
+# Archivos de credenciales o claves
+credentials.json
+*.key
+*.pem
+
+# Archivos de pruebas
+*.bak
+*.tmp
+*.swp
