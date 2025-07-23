@@ -262,7 +262,7 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-    texto = update.message.text.split()[0].lower()  # Primer "palabra" del mensaje (ej: /ayuda@OtroBot)
+        texto = update.message.text.split()[0].lower()  # Primer "palabra" del mensaje (ej: /ayuda@OtroBot)
     if "@" in texto:
         if texto != f"/ayuda@{context.bot.username.lower()}":
             return  # No es para tu bot
@@ -624,4 +624,4 @@ async def main():
 if __name__ == "__main__":
     import asyncio
     nest_asyncio.apply()
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())
