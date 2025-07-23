@@ -40,6 +40,18 @@ def chat_permitido(chat_id: int) -> bool:
     """Verifica si el chat está permitido"""
     return chat_id in ALLOWED_CHATS
 
+# ---- MENSAJES PARA BOT ----
+def es_comando_para_bot(update: Update, bot_username: str, comando: str) -> bool:
+    """
+    Verifica que el comando esté dirigido explícitamente a este bot.
+    Ejemplo válido: /ayuda@TuBot
+    """
+    if not update.message or not update.message.text:
+        return False
+
+    texto = update.message.text.strip().lower()
+    return texto == f"/{comando}@{bot_username.lower()}"
+
 # VARIABLES
 registro_datos = {}
 nest_asyncio.apply()
@@ -55,26 +67,6 @@ with open("credentials.json", "w") as f:
 
 creds = service_account.Credentials.from_service_account_file("credentials.json")
 drive_service = build('drive', 'v3', credentials=creds)
-
-# ---- MENSAJES PARA BOT ----
-def mensaje_es_para_bot(update: Update, bot_username: str) -> bool:
-    message = update.message
-    if not message:
-        return False
-
-    # Si es respuesta a un mensaje del bot
-    if message.reply_to_message and message.reply_to_message.from_user.id == update.get_bot().id:
-        return True
-
-    # Si el mensaje contiene un comando
-    if message.text and message.text.startswith("/"):
-        primer_comando = message.text.split()[0].lower()
-        if "@" in primer_comando:
-            return primer_comando.endswith(f"@{bot_username.lower()}")
-        else:
-            return True
-
-    return False
 
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
@@ -199,7 +191,7 @@ async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not mensaje_es_para_bot(update, context.bot.username):
+        if not es_comando_para_bot(update, context.bot.username, "upload"):
             return
 
     user_id = update.effective_user.id
@@ -240,7 +232,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not mensaje_es_para_bot(update, context.bot.username):
+        if not es_comando_para_bot(update, context.bot.username, "start"):
             return
 
     user_id = update.effective_user.id
@@ -255,6 +247,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📌Ejm: Psje. SN - S/N\n\n"
         "¡Vamos, tú puedes!💪"
     )
+
 async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not chat_permitido(chat_id):
@@ -262,13 +255,8 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        texto = update.message.text.split()[0].lower()  # Primer "palabra" del mensaje (ej: /ayuda@OtroBot)
-    if "@" in texto:
-        if texto != f"/ayuda@{context.bot.username.lower()}":
-            return  # No es para tu bot
-    elif texto != "/ayuda":
-        return  # No es el comando esperado
-
+        if not es_comando_para_bot(update, context.bot.username, "ayuda"):
+            return
 
     botones = [
         [InlineKeyboardButton("🔄 Reiniciar registro", callback_data="reiniciar")],
@@ -484,7 +472,7 @@ async def exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not mensaje_es_para_bot(update, context.bot.username):
+        if not es_comando_para_bot(update, context.bot.username, "exportar"):
             return
     
     user_id = update.effective_user.id
@@ -585,7 +573,7 @@ async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 👇 Aquí validamos que el mensaje sea para tu bot
     if update.message.chat.type in ['group', 'supergroup']:
-        if not mensaje_es_para_bot(update, context.bot.username):
+        if not es_comando_para_bot(update, context.bot.username, "id"):
             return
     
     await update.message.reply_text(f"Chat ID: {update.effective_chat.id}")
