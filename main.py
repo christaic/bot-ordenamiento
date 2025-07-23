@@ -50,7 +50,7 @@ def es_comando_para_bot(update: Update, bot_username: str, comando: str) -> bool
         return False
 
     texto = update.message.text.strip().lower()
-    return texto == f"/{comando}@{bot_username.lower()}"
+    return texto == f"/{comando} @{bot_username.lower()}"
 
 # VARIABLES
 registro_datos = {}
