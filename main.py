@@ -37,7 +37,7 @@ def analizar_foto_ia(ruta_imagen, paso_actual):
     try:
         # 🪄 TRUCO DE MAGIA: Forzamos a la IA a responder SOLO en JSON
         # Esto evita que hable de más y rompa el código.
-        model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
+        model = genai.GenerativeModel('gemini-pro-vision', generation_config={"response_mime_type": "application/json"})
         
         imagen = PILImage.open(ruta_imagen)
 
