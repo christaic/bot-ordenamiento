@@ -32,7 +32,7 @@ load_dotenv()  # <--- Coloca esta línea aquí
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ID_USUARIOS_AUTORIZADOS = [7175478712, 7909467383, 5809993174]
 ID_GRUPO_ASESORES = -1002875911448
-NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO"
+NOMBRE_CARPETA_DRIVE = "REPORTE_ETIQUETADO_V2"
 DRIVE_ID = "1PuCOsjdZZuV0xzAy9ljv5cglORWP1M2n"  # Coloca aquí tu ID de unidad compartida
 ALLOWED_CHATS = [-1002640857147, -1002452068425, -4718591093, -4831456255, -1002814603547, -1002838776671, -4951443286, -4870196969, -4824829490, -4979512409, -4903731585, -4910534813, -4845865029, -4643755320, -4860386920, -4945504804, -4854616787, -4979142096, -4653414566]  # Reemplaza con los IDs de tus grupos
 
@@ -70,25 +70,46 @@ drive_service = build('drive', 'v3', credentials=creds)
 
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
+    # Buscamos si ya existe
     query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     if parent_id:
         query += f" and '{parent_id}' in parents"
+
     results = service.files().list(
         q=query,
-        corpora='drive',
-        driveId=DRIVE_ID,
+        fields="files(id, name, webViewLink)",  # <--- Pedimos el Link aquí
         includeItemsFromAllDrives=True,
-        supportsAllDrives=True,
-        fields="files(id, name)"
+        supportsAllDrives=True
     ).execute()
+    
     folders = results.get('files', [])
+    
     if folders:
+        # Si existe, te dice dónde está
+        print(f"👁️ ENCONTRADA: {folder_name}")
+        print(f"🔗 LINK: {folders[0].get('webViewLink')}") # <--- ¡Haz clic aquí para ver dónde está!
         return folders[0]['id']
-    metadata = {'name': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
+    
+    # Si no existe, la crea
+    print(f"🔨 CREANDO: {folder_name} dentro de {parent_id}...")
+    metadata = {
+        'name': folder_name, 
+        'mimeType': 'application/vnd.google-apps.folder'
+    }
     if parent_id:
         metadata['parents'] = [parent_id]
-    folder = service.files().create(body=metadata, fields='id', supportsAllDrives=True).execute()
+        
+    folder = service.files().create(
+        body=metadata, 
+        fields='id, webViewLink', 
+        supportsAllDrives=True
+    ).execute()
+    
+    print(f"✅ CREADA: {folder_name}")
+    print(f"🔗 LINK: {folder.get('webViewLink')}") # <--- ¡Este link es la clave!
     return folder['id']
+
+
 
 def subir_archivo_excel_grupo(nombre_grupo, archivo_local):
     
