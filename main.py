@@ -641,8 +641,8 @@ async def main():
     scheduler.add_job(
         subir_archivos_drive_secuencial,
         'cron',
-        hour=18,
-        minute=30,
+        hour=11,
+        minute=35,
         timezone=timezone('America/Lima')
     )
     scheduler.start()
