@@ -27,77 +27,75 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from PIL import Image as PILImage
 
-# Configura la IA
+# Asegúrate de que la API KEY esté cargada
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def analizar_foto_ia(ruta_imagen, paso_actual):
     """
-    Analiza la imagen.
-    - Si es válida pero mejorable: Retorna True + Consejo.
-    - Si es inservible (negra, nada que ver): Retorna False + Motivo.
+    Analiza la imagen con Gemini 1.5 Flash en modo JSON estricto.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # 🪄 TRUCO DE MAGIA: Forzamos a la IA a responder SOLO en JSON
+        # Esto evita que hable de más y rompa el código.
+        model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
+        
         imagen = PILImage.open(ruta_imagen)
 
         if paso_actual == 1: # 🏗️ FOTO ANTES
             prompt = """
             Eres un instructor de telecomunicaciones. Analiza esta foto del estado INICIAL.
+            Objetivo: EDUCAR, no bloquear.
             
-            Tu objetivo es EDUCAR, no bloquear.
-            1. ¿Se ven cables colgando o desordenados? (Es lo normal en el "antes").
-            2. ¿Es una foto válida de un poste/fachada? (Si es una foto negra o del piso, RECHAZA).
+            1. ¿Se ven cables colgando/desordenados? (Normal en el antes).
+            2. ¿Es una foto válida de poste/fachada? (Si es negra, borrosa o irrelevante, RECHAZA).
 
-            Responde JSON:
-            {"aprobado": true, "razon": "Consejo: Veo cables en desuso, recuerda retirarlos para limpiar la zona."} 
-            o
-            {"aprobado": false, "razon": "No veo ningún poste ni cables. Toma la foto de nuevo."}
+            Responde usando este esquema JSON:
+            {"aprobado": boolean, "razon": "string"}
             """
 
         elif paso_actual == 2: # ✨ FOTO DESPUÉS
             prompt = """
             Eres un instructor. Analiza el TRABAJO FINAL.
             
-            1. ¿Se ve más ordenado? 
+            1. ¿Se ve más ordenado que un desastre habitual?
             2. ¿Se ven etiquetas naranjas a lo lejos?
             
-            Si ves que falta orden, NO rechaces (a menos que sea terrible). Solo sugiere.
+            Si falta orden, SUGIERE pero APRUEBA (salvo que sea un desastre).
             
-            Responde JSON:
-            {"aprobado": true, "razon": "Buen trabajo. Si retiraste los cables excedentes, excelente. No olvides las etiquetas."}
+            Responde usando este esquema JSON:
+            {"aprobado": boolean, "razon": "string"}
             """
 
         elif paso_actual == 3: # 🏷️ FOTO ETIQUETA
             prompt = """
-            Analiza esta etiqueta. Sé flexible pero firme con los datos.
+            Analiza esta etiqueta de fibra óptica.
             
-            1. ¿Es Naranja?
-            2. ¿Tiene datos escritos a mano?
+            1. ¿Es color Naranja/Rojo?
+            2. ¿Tiene datos escritos a mano (plumón)?
             
-            - Si está un poco borrosa pero se entiende => APROBAR (true) con advertencia.
-            - Si NO hay etiqueta o está totalmente ilegible => RECHAZAR (false).
+            - Poco borrosa pero legible => APROBAR (true) con advertencia.
+            - Sin etiqueta, otro color o totalmente ilegible => RECHAZAR (false).
 
-            Responde JSON:
-            {"aprobado": true, "razon": "OK"} (Si está perfecta)
-            {"aprobado": true, "razon": "⚠️ Pasable, pero intenta enfocar mejor la próxima vez."} (Si está regular)
-            {"aprobado": false, "razon": "No veo datos escritos o la imagen es ilegible."} (Si está mal)
+            Responde usando este esquema JSON:
+            {"aprobado": boolean, "razon": "string"}
             """
         
         else:
             return True, "OK"
 
-        # Llamada a la IA
+        # 🚀 Enviamos a la IA
         response = model.generate_content([prompt, imagen])
-        texto_limpio = response.text.replace("```json", "").replace("```", "").strip()
-        resultado = json.loads(texto_limpio)
+        
+        # Como activamos el modo JSON, ya no necesitamos limpiar texto raro.
+        resultado = json.loads(response.text)
         
         return resultado["aprobado"], resultado["razon"]
 
     except Exception as e:
         print(f"⚠️ Error IA: {e}")
-        return True, "IA en mantenimiento, sigamos."
-
-
+        # 🚨 MODO CHISMOSO ACTIVADO:
+        # Si algo falla, el bot te lo dirá en el chat para que sepamos qué arreglar.
+        return True, f"⚠️ ERROR DE SISTEMA (No te asustes, es para arreglar): {str(e)}"
 
 # Scopes
 SCOPES = ['https://www.googleapis.com/auth/drive']
