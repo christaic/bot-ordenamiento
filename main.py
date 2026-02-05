@@ -26,6 +26,28 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from PIL import Image as PILImage
 
+# Scopes
+SCOPES = ['https://www.googleapis.com/auth/drive']
+
+# 1. Leemos el contenido desde la Variable de Entorno de Render
+token_json_str = os.getenv("GOOGLE_CREDENTIALS_JSON")
+
+if token_json_str:
+    # Convertimos el texto JSON a un diccionario de Python
+    token_info = json.loads(token_json_str)
+    
+    # Creamos las credenciales directamente desde la memoria
+    creds = Credentials.from_authorized_user_info(token_info, SCOPES)
+else:
+    raise ValueError("❌ ERROR: No encontré la variable de entorno 'GOOGLE_TOKEN_JSON'.")
+
+# 2. Refrescar token automáticamente si venció
+if creds and creds.expired and creds.refresh_token:
+    creds.refresh(Request())
+
+# 3. Conectamos
+drive_service = build('drive', 'v3', credentials=creds)
+
 # Zona horaria de Lima (UTC-5)
 LIMA_TZ = timezone("America/Lima")
 
@@ -61,16 +83,6 @@ registro_datos = {}
 nest_asyncio.apply()
 logging.basicConfig(level=logging.INFO)
 
-# Obtener el contenido del JSON desde la variable de entorno
-cred_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-if not cred_json:
-    raise ValueError("La variable de entorno GOOGLE_CREDENTIALS_JSON no está definida.")
-
-with open("credentials.json", "w") as f:
-    f.write(cred_json)
-
-creds = service_account.Credentials.from_service_account_file("credentials.json")
-drive_service = build('drive', 'v3', credentials=creds)
 
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
@@ -664,8 +676,8 @@ async def main():
     scheduler.add_job(
         subir_archivos_drive_secuencial,
         'cron',
-        hour=12,
-        minute=12,
+        hour=16,
+        minute=5,
         timezone=timezone('America/Lima')
     )
     scheduler.start()
@@ -677,3 +689,4 @@ if __name__ == "__main__":
     import asyncio
     nest_asyncio.apply()
     asyncio.get_event_loop().run_until_complete(main())
+
