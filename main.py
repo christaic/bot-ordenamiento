@@ -70,46 +70,44 @@ drive_service = build('drive', 'v3', credentials=creds)
 
 # ---- FUNCIONES DE GOOGLE DRIVE ----
 def get_or_create_folder(service, folder_name, parent_id=None):
-    # Buscamos si ya existe
+    # 1. Buscar si la carpeta ya existe
+    # Nota: Quitamos 'corpora', 'driveId' e 'includeItemsFromAllDrives' que daban problemas
     query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    
     if parent_id:
         query += f" and '{parent_id}' in parents"
 
     results = service.files().list(
         q=query,
-        fields="files(id, name, webViewLink)",  # <--- Pedimos el Link aquí
-        includeItemsFromAllDrives=True,
-        supportsAllDrives=True
+        fields="files(id, name, webViewLink)",
+        # supportsAllDrives=True es seguro dejarlo, por si acaso
+        supportsAllDrives=True 
     ).execute()
     
     folders = results.get('files', [])
     
     if folders:
-        # Si existe, te dice dónde está
-        print(f"👁️ ENCONTRADA: {folder_name}")
-        print(f"🔗 LINK: {folders[0].get('webViewLink')}") # <--- ¡Haz clic aquí para ver dónde está!
+        print(f"✅ Carpeta existente encontrada: {folder_name}")
         return folders[0]['id']
     
-    # Si no existe, la crea
-    print(f"🔨 CREANDO: {folder_name} dentro de {parent_id}...")
+    # 2. Si no existe, crearla
+    print(f"🔨 Creando carpeta nueva: {folder_name}...")
     metadata = {
         'name': folder_name, 
         'mimeType': 'application/vnd.google-apps.folder'
     }
+    
     if parent_id:
         metadata['parents'] = [parent_id]
         
     folder = service.files().create(
         body=metadata, 
-        fields='id, webViewLink', 
+        fields='id, webViewLink',
         supportsAllDrives=True
     ).execute()
     
-    print(f"✅ CREADA: {folder_name}")
-    print(f"🔗 LINK: {folder.get('webViewLink')}") # <--- ¡Este link es la clave!
+    print(f"✨ Carpeta creada: {folder.get('webViewLink')}")
     return folder['id']
-
-
 
 def subir_archivo_excel_grupo(nombre_grupo, archivo_local):
     
@@ -662,8 +660,8 @@ async def main():
     scheduler.add_job(
         subir_archivos_drive_secuencial,
         'cron',
-        hour=11,
-        minute=59,
+        hour=12,
+        minute=12,
         timezone=timezone('America/Lima')
     )
     scheduler.start()
