@@ -91,8 +91,14 @@ def get_or_create_folder(service, folder_name, parent_id=None):
     return folder['id']
 
 def subir_archivo_excel_grupo(nombre_grupo, archivo_local):
+    
+    # Crear la carpeta principal (REPORTE_ETIQUETADO)
     carpeta_principal_id = get_or_create_folder(drive_service, NOMBRE_CARPETA_DRIVE, parent_id=DRIVE_ID)
+    print(f"DEBUG: Carpeta principal es {carpeta_principal_id}") # Ver en consola
+
+    # Crear la carpeta con el nombre del grupo de Telegram
     carpeta_grupo_id = get_or_create_folder(drive_service, nombre_grupo, parent_id=carpeta_principal_id)
+    print(f"DEBUG: Carpeta del grupo '{nombre_grupo}' es {carpeta_grupo_id}")
 
     media = MediaFileUpload(
         archivo_local,
@@ -182,6 +188,40 @@ def guardar_en_excel(update, context, datos):
     ws.cell(row=fila, column=7, value=datos.get("longitud", ""))
     wb.save(archivo_excel)
     print(f"✅ Registro agregado al Excel: {archivo_excel}")
+
+
+# COMUNICACION DRIVE - BOT TELEGRAM
+
+async def test_drive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ID_USUARIOS_AUTORIZADOS:
+        return
+
+    try:
+        # 1. Intentar listar archivos (Prueba de comunicación)
+        results = drive_service.files().list(
+            pageSize=1, 
+            fields="files(id, name)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            driveId=DRIVE_ID,
+            corpora='drive'
+        ).execute()
+        
+        # 2. Intentar obtener o crear la carpeta principal
+        folder_id = get_or_create_folder(drive_service, NOMBRE_CARPETA_DRIVE, parent_id=DRIVE_ID)
+        
+        await update.message.reply_text(
+            f"✅ **Conexión Exitosa**\n"
+            f"📂 Carpeta Principal ID: `{folder_id}`\n"
+            f"📡 Comunicación con Drive OK.", 
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ **Error de conexión:**\n`{str(e)}`", parse_mode="Markdown")
+
+
+
 
 # ---- NUEVO COMANDO: SUBIR BACKUP ----
 async def upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -583,6 +623,7 @@ async def main():
     crear_directorio_excel()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("testdrive", test_drive))
     app.add_handler(CommandHandler("ayuda", ayuda))
     app.add_handler(CommandHandler("exportar", exportar))
     app.add_handler(CommandHandler("upload", upload))
