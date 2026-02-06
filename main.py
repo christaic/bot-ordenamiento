@@ -515,46 +515,53 @@ async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     paso = datos.get("paso", 0)
 
     if paso not in [1, 2, 3]:
-        await update.message.reply_text("⚠️ Este paso no requiere fotos. Usa el botón adecuado o responde con lo solicitado.")
+        await update.message.reply_text("⚠️ Este paso no requiere fotos. Usa el botón adecuado.")
         return
 
-    # 2. Descargar la foto como TEMPORAL primero 📥
-    archivo = await update.message.photo[-1].get_file()
-    nombre_temp = f"temp_{chat_id}_{user_id}.jpg"
-    await archivo.download_to_drive(nombre_temp)
+    # 2. Descargar la foto como TEMPORAL 📥
+    try:
+        archivo = await update.message.photo[-1].get_file()
+        nombre_temp = f"temp_{chat_id}_{user_id}.jpg"
+        await archivo.download_to_drive(nombre_temp)
+    except Exception as e:
+        await update.message.reply_text("⚠️ Error descargando la foto. Intenta de nuevo.")
+        return
 
-    # 3. 🤖 MOMENTO DE MAGIA: La IA analiza la foto
+    # 3. 🤖 MOMENTO DE MAGIA: La IA analiza
     mensaje_espera = await update.message.reply_text("🤖 El Supervisor Virtual está revisando la foto... 👁️")
     
-    # Llamamos a la función que creamos antes
+    # Llamada a la IA
     es_valida, razon_ia = analizar_foto_ia(nombre_temp, paso)
 
     # Borramos el mensaje de "Revisando..."
-    await context.bot.delete_message(chat_id=chat_id, message_id=mensaje_espera.message_id)
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=mensaje_espera.message_id)
+    except:
+        pass
 
-    # 4. ⛔ CASO RECHAZADO: Si la IA dice que no sirve
+    # 4. ⛔ CASO RECHAZADO
     if not es_valida:
-        os.remove(nombre_temp) # Borramos la basura
+        os.remove(nombre_temp)
+        # 🛡️ FIX: Quitamos parse_mode="Markdown" aquí para evitar el error 400
         await update.message.reply_text(
-            f"⛔ **FOTO RECHAZADA**\n\n"
-            f"🧐 **Motivo:** {razon_ia}\n\n"
-            "📸 Por favor, inténtalo de nuevo corrigiendo el error.",
-            parse_mode="Markdown"
+            f"⛔ FOTO RECHAZADA\n\n"
+            f"🧐 Motivo: {razon_ia}\n\n"
+            "📸 Por favor, inténtalo de nuevo corrigiendo el error."
         )
-        return # Cortamos aquí, no avanza.
+        return
 
-    # 5. 💡 CASO CONSEJO: Si es válida pero hay observación (Modo Coach)
+    # 5. 💡 CASO CONSEJO (Aprobado pero con nota)
     if razon_ia != "OK":
+        # 🛡️ FIX: Quitamos parse_mode="Markdown" aquí también
         await update.message.reply_text(
-            f"✅ **Foto Aceptada con Observación:**\n_{razon_ia}_", 
-            parse_mode="Markdown"
+            f"✅ Foto Aceptada con Observación:\n👉 {razon_ia}"
         )
 
-    # 6. ✅ TODO OK: Movemos la foto temporal a su nombre final y avanzamos
+    # 6. ✅ TODO OK: Guardar y Avanzar
     
     if paso == 1:
         ruta_final = f"reportes/{chat_id}_{user_id}_antes.jpg"
-        os.rename(nombre_temp, ruta_final) # Renombramos el temp al final
+        os.rename(nombre_temp, ruta_final)
         datos['foto_antes'] = ruta_final
         datos["paso"] = 2
         
@@ -567,7 +574,7 @@ async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🎯 Ahora necesito la foto del **DESPUÉS** 📸\n\n"
             "📲 Usa *AppNoteCam* (Vertical).\n"
             "💡 _Tip: Que se vea ordenado y las etiquetas naranjas a lo lejos._",
-            parse_mode="Markdown",
+            parse_mode="Markdown", # Aquí sí podemos usar Markdown porque el texto es nuestro (fijo)
             reply_markup=botones
         )
 
