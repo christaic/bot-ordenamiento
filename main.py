@@ -27,73 +27,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
 from PIL import Image as PILImage
 
-# Asegúrate de que la API KEY esté cargada
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-def analizar_foto_ia(ruta_imagen, paso_actual):
-    """
-    Analiza la imagen con Gemini 2.0 Flash (¡El modelo del futuro!).
-    """
-    try:
-        # 🟢 CAMBIO CLAVE: Usamos 'gemini-2.0-flash' que SÍ aparece en tu lista
-        model = genai.GenerativeModel('gemini-2.0-flash', generation_config={"response_mime_type": "application/json"})
-        
-        imagen = PILImage.open(ruta_imagen)
-
-        if paso_actual == 1: # 🏗️ FOTO ANTES
-            prompt = """
-            Eres un instructor de telecomunicaciones. Analiza esta foto del estado INICIAL.
-            Objetivo: EDUCAR, no bloquear.
-            
-            1. ¿Se ven cables colgando/desordenados? (Normal en el antes).
-            2. ¿Es una foto válida de poste/fachada? (Si es negra, borrosa o irrelevante, RECHAZA).
-
-            Responde usando este esquema JSON:
-            {"aprobado": boolean, "razon": "string"}
-            """
-
-        elif paso_actual == 2: # ✨ FOTO DESPUÉS
-            prompt = """
-            Eres un instructor. Analiza el TRABAJO FINAL.
-            
-            1. ¿Se ve más ordenado?
-            2. ¿Se ven etiquetas naranjas a lo lejos?
-            
-            Si falta orden, SUGIERE pero APRUEBA (salvo que sea un desastre).
-            
-            Responde usando este esquema JSON:
-            {"aprobado": boolean, "razon": "string"}
-            """
-
-        elif paso_actual == 3: # 🏷️ FOTO ETIQUETA
-            prompt = """
-            Analiza esta etiqueta de fibra óptica.
-            
-            1. ¿Es color Naranja/Rojo?
-            2. ¿Tiene datos escritos a mano (plumón)?
-            
-            - Poco borrosa pero legible => APROBAR (true) con advertencia.
-            - Sin etiqueta, otro color o totalmente ilegible => RECHAZAR (false).
-
-            Responde usando este esquema JSON:
-            {"aprobado": boolean, "razon": "string"}
-            """
-        
-        else:
-            return True, "OK"
-
-        # Enviamos a la IA 🚀
-        response = model.generate_content([prompt, imagen])
-        
-        # Parseamos el JSON
-        resultado = json.loads(response.text)
-        
-        return resultado["aprobado"], resultado["razon"]
-
-    except Exception as e:
-        print(f"⚠️ Error IA: {e}")
-        # Si falla, que nos diga qué pasó
-        return True, f"⚠️ ERROR TÉCNICO: {str(e)}"
 # Scopes
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
@@ -500,12 +433,13 @@ async def manejar_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=botones
     )
 
+
 async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # 1. Validaciones iniciales
     chat_id = update.effective_chat.id
     if not chat_permitido(chat_id):
         return
         
+    # Validar que sea respuesta al bot (opcional, según tu lógica original)
     if update.message.chat.type in ['group', 'supergroup']:
         if not (update.message.reply_to_message and update.message.reply_to_message.from_user.id == context.bot.id):
             return
@@ -514,104 +448,70 @@ async def manejar_foto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     datos = registro_datos.setdefault((chat_id, user_id), {})
     paso = datos.get("paso", 0)
 
+    # Si el usuario manda foto fuera de los pasos 1, 2 o 3
     if paso not in [1, 2, 3]:
-        await update.message.reply_text("⚠️ Este paso no requiere fotos. Usa el botón adecuado.")
+        await update.message.reply_text("⚠️ Este paso no requiere fotos, o no has iniciado el registro.")
         return
 
-    # 2. Descargar la foto como TEMPORAL 📥
-    try:
-        archivo = await update.message.photo[-1].get_file()
-        nombre_temp = f"temp_{chat_id}_{user_id}.jpg"
-        await archivo.download_to_drive(nombre_temp)
-    except Exception as e:
-        await update.message.reply_text("⚠️ Error descargando la foto. Intenta de nuevo.")
-        return
+    # Descargar la foto (tomamos la de mayor resolución: photo[-1])
+    archivo = await update.message.photo[-1].get_file()
 
-    # 3. 🤖 MOMENTO DE MAGIA: La IA analiza
-    mensaje_espera = await update.message.reply_text("🤖 El Supervisor Virtual está revisando la foto... 👁️")
-    
-    # Llamada a la IA
-    es_valida, razon_ia = analizar_foto_ia(nombre_temp, paso)
-
-    # Borramos el mensaje de "Revisando..."
-    try:
-        await context.bot.delete_message(chat_id=chat_id, message_id=mensaje_espera.message_id)
-    except:
-        pass
-
-    # 4. ⛔ CASO RECHAZADO
-    if not es_valida:
-        os.remove(nombre_temp)
-        # 🛡️ FIX: Quitamos parse_mode="Markdown" aquí para evitar el error 400
-        await update.message.reply_text(
-            f"⛔ FOTO RECHAZADA\n\n"
-            f"🧐 Motivo: {razon_ia}\n\n"
-            "📸 Por favor, inténtalo de nuevo corrigiendo el error."
-        )
-        return
-
-    # 5. 💡 CASO CONSEJO (Aprobado pero con nota)
-    if razon_ia != "OK":
-        # 🛡️ FIX: Quitamos parse_mode="Markdown" aquí también
-        await update.message.reply_text(
-            f"✅ Foto Aceptada con Observación:\n👉 {razon_ia}"
-        )
-
-    # 6. ✅ TODO OK: Guardar y Avanzar
-    
+    # --- LÓGICA PASO 1: FOTO ANTES ---
     if paso == 1:
-        ruta_final = f"reportes/{chat_id}_{user_id}_antes.jpg"
-        os.rename(nombre_temp, ruta_final)
-        datos['foto_antes'] = ruta_final
-        datos["paso"] = 2
+        ruta = f"reportes/{chat_id}_{user_id}_antes.jpg"
+        await archivo.download_to_drive(ruta)
+        datos['foto_antes'] = ruta
+        datos["paso"] = 2  # Avanzamos al siguiente paso
         
         botones = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔁 Repetir esta foto 📸", callback_data="repetir_paso_1")],
-            [InlineKeyboardButton("➡️ Continuar con foto del DESPUÉS", callback_data="continuar_paso_2")]
+            [InlineKeyboardButton("🔁 Repetir foto", callback_data="repetir_paso_1")],
+            [InlineKeyboardButton("➡️ Continuar a DESPUÉS", callback_data="continuar_paso_2")]
         ])
         await update.message.reply_text(
-            "📸 ¡Genial! Foto del ANTES aprobada ✅\n\n"
-            "🎯 Ahora necesito la foto del **DESPUÉS** 📸\n\n"
-            "📲 Usa *AppNoteCam* (Vertical).\n"
-            "💡 _Tip: Que se vea ordenado y las etiquetas naranjas a lo lejos._",
-            parse_mode="Markdown", # Aquí sí podemos usar Markdown porque el texto es nuestro (fijo)
-            reply_markup=botones
+            "✅ Foto del ANTES guardada.\n\n"
+            "📸 Ahora envía la foto del **DESPUÉS**.",
+            reply_markup=botones,
+            parse_mode="Markdown"
         )
 
+    # --- LÓGICA PASO 2: FOTO DESPUÉS ---
     elif paso == 2:
-        ruta_final = f"reportes/{chat_id}_{user_id}_despues.jpg"
-        os.rename(nombre_temp, ruta_final)
-        datos['foto_despues'] = ruta_final
-        datos["paso"] = 3
+        ruta = f"reportes/{chat_id}_{user_id}_despues.jpg"
+        await archivo.download_to_drive(ruta)
+        datos['foto_despues'] = ruta
+        datos["paso"] = 3  # Avanzamos al siguiente paso
         
         botones = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔁 Repetir esta foto 📸", callback_data="repetir_paso_2")],
-            [InlineKeyboardButton("➡️ Continuar con foto de ETIQUETA", callback_data="continuar_paso_3")]
+            [InlineKeyboardButton("🔁 Repetir foto", callback_data="repetir_paso_2")],
+            [InlineKeyboardButton("➡️ Continuar a ETIQUETA", callback_data="continuar_paso_3")]
         ])
         await update.message.reply_text(
-            "📷 ¡Excelente! Foto del DESPUÉS aprobada ✅\n\n"
-            "🔖 Ahora toca foto de la **ETIQUETA** (Primer Plano).\n\n"
-            "🧐 **Requisito:** Debe ser NARANJA y tener los datos escritos a mano.",
-            parse_mode="Markdown",
-            reply_markup=botones
+            "✅ Foto del DESPUÉS guardada.\n\n"
+            "🏷️ Ahora envía la foto de la **ETIQUETA**.",
+            reply_markup=botones,
+            parse_mode="Markdown"
         )
 
+    # --- LÓGICA PASO 3: FOTO ETIQUETA ---
     elif paso == 3:
-        ruta_final = f"reportes/{chat_id}_{user_id}_etiqueta.jpg"
-        os.rename(nombre_temp, ruta_final)
-        datos['foto_etiqueta'] = ruta_final
-        datos["paso"] = 4
+        ruta = f"reportes/{chat_id}_{user_id}_etiqueta.jpg"
+        await archivo.download_to_drive(ruta)
+        datos['foto_etiqueta'] = ruta
+        datos["paso"] = 4  # Avanzamos al paso de GPS
         
         botones = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔁 Repetir esta foto 🏷️", callback_data="repetir_paso_3")],
-            [InlineKeyboardButton("➡️ Continuar con la ubicación GPS 📍", callback_data="continuar_paso_4")]
+            [InlineKeyboardButton("🔁 Repetir foto", callback_data="repetir_paso_3")],
+            [InlineKeyboardButton("➡️ Enviar GPS 📍", callback_data="continuar_paso_4")]
         ])
         await update.message.reply_text(
-            "🏷️ ¡Foto de ETIQUETA validada! 📌\n\n"
-            "🧭 Ahora presiona **Continuar** para enviar tu **Ubicación GPS**.",
-            parse_mode="Markdown",
-            reply_markup=botones
+            "✅ Foto de ETIQUETA guardada.\n\n"
+            "📍 Para finalizar, comparte tu **Ubicación GPS** actual.",
+            reply_markup=botones,
+            parse_mode="Markdown"
         )
+
+
+
 
 async def manejar_ubicacion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
