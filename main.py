@@ -32,12 +32,11 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def analizar_foto_ia(ruta_imagen, paso_actual):
     """
-    Analiza la imagen con Gemini 1.5 Flash en modo JSON estricto.
+    Analiza la imagen con Gemini 2.0 Flash (¡El modelo del futuro!).
     """
     try:
-        # 🪄 TRUCO DE MAGIA: Forzamos a la IA a responder SOLO en JSON
-        # Esto evita que hable de más y rompa el código.
-        model = genai.GenerativeModel('gemini-pro-vision', generation_config={"response_mime_type": "application/json"})
+        # 🟢 CAMBIO CLAVE: Usamos 'gemini-2.0-flash' que SÍ aparece en tu lista
+        model = genai.GenerativeModel('gemini-2.0-flash', generation_config={"response_mime_type": "application/json"})
         
         imagen = PILImage.open(ruta_imagen)
 
@@ -57,7 +56,7 @@ def analizar_foto_ia(ruta_imagen, paso_actual):
             prompt = """
             Eres un instructor. Analiza el TRABAJO FINAL.
             
-            1. ¿Se ve más ordenado que un desastre habitual?
+            1. ¿Se ve más ordenado?
             2. ¿Se ven etiquetas naranjas a lo lejos?
             
             Si falta orden, SUGIERE pero APRUEBA (salvo que sea un desastre).
@@ -83,20 +82,18 @@ def analizar_foto_ia(ruta_imagen, paso_actual):
         else:
             return True, "OK"
 
-        # 🚀 Enviamos a la IA
+        # Enviamos a la IA 🚀
         response = model.generate_content([prompt, imagen])
         
-        # Como activamos el modo JSON, ya no necesitamos limpiar texto raro.
+        # Parseamos el JSON
         resultado = json.loads(response.text)
         
         return resultado["aprobado"], resultado["razon"]
 
     except Exception as e:
         print(f"⚠️ Error IA: {e}")
-        # 🚨 MODO CHISMOSO ACTIVADO:
-        # Si algo falla, el bot te lo dirá en el chat para que sepamos qué arreglar.
-        return True, f"⚠️ ERROR DE SISTEMA (No te asustes, es para arreglar): {str(e)}"
-
+        # Si falla, que nos diga qué pasó
+        return True, f"⚠️ ERROR TÉCNICO: {str(e)}"
 # Scopes
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
